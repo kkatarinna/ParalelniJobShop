@@ -11,7 +11,7 @@
 #include "serial/sort.hpp"
 
 constexpr size_t SMALL  = 500u;
-constexpr size_t MEDIUM = 10000u;
+constexpr size_t MEDIUM = 5000u;
 constexpr size_t LARGE  = 5000000u;
 
 void show_help() {
@@ -19,19 +19,22 @@ void show_help() {
 
 void generate_cutoff_data() {
     using namespace std::string_literals;
-    auto const m_inf = "resources/merge/5000000.txt"s;
-    auto const s_inf = "resources/sort/5000000.txt"s;
-    
-    auto m_vec = common::read_from_file<int>(m_inf);
-    auto s_vec = common::read_from_file<int>(s_inf);
+    auto m_vec = [] {
+        auto const m_inf = "resources/merge/5000000.txt"s;
+        return common::read_from_file<int>(m_inf);
+    }();
+    auto s_vec = [] {
+        auto const s_inf = "resources/sort/5000000.txt"s;
+        return common::read_from_file<int>(s_inf);
+    }();
 
     std::ofstream m_out{ "results/merge_cutoff_raw.txt" };
     std::ofstream s_out{ "results/sort_cutoff_raw.txt" };
 
     for (size_t cutoff = 2; cutoff < LARGE; cutoff <<= 1) {
-            parallel::sort_cutoff = cutoff;
-            parallel::merge_cutoff = cutoff;
-            for (size_t measurements = 0; measurements < 5; ++measurements) {
+        parallel::sort_cutoff = cutoff;
+        parallel::merge_cutoff = cutoff;
+        for (size_t measurements = 0; measurements < 5; ++measurements) {
             auto const m_parallel_time = common::timeit([m_vec]() mutable {
                     parallel::merge(m_vec.begin(), m_vec.begin() + LARGE/2, m_vec.end());
             });
