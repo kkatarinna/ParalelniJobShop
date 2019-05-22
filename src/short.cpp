@@ -2,6 +2,7 @@
 #include <execution>
 #include <fstream>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -82,26 +83,31 @@ void test_performance(size_t sz) {
 
 int main(int argc, char *argv[]) {
     using namespace std::string_literals;
+
+    auto const opts = std::map{
+        {"-h"s, [] { show_help(); }},
+        {"--help"s, [] { show_help(); }},
+        {"-s"s, [] { test_performance(SMALL); }},
+        {"--small"s, [] { test_performance(SMALL); }},
+        {"-m"s, [] { test_performance(MEDIUM); }},
+        {"--medium"s, [] { test_performance(MEDIUM); }},
+        {"-l"s, [] { test_performance(LARGE); }},
+        {"--large"s, [] { test_performance(LARGE); }},
+        {"-c"s, [] { generate_cutoff_data(); }},
+        {"--cutoff"s, [] { generate_cutoff_data(); }},
+        {"-p"s, [] { generate_performance_data(); }},
+        {"--performance"s, [] { generate_performance_data(); }},
+        {"-ts"s, [] { test_correctness(SMALL); }},
+        {"--test-small"s, [] { test_correctness(SMALL); }},
+        {"-tm"s, [] { test_correctness(MEDIUM); }},
+        {"--test-medium"s, [] { test_correctness(MEDIUM); }},
+        {"-tl"s, [] { test_correctness(LARGE); }},
+        {"--test-large"s, [] { test_correctness(LARGE); }},
+        {"-tt"s, [] { test_trivial(); }},
+        {"--test-trivial"s, [] { test_trivial(); }}
+    };
     if (argc == 2) {
-        if (argv[1] == "-c"s || argv[1] == "--cutoff"s) {
-            generate_cutoff_data();
-            return 0;
-        } else if (argv[1] == "-p"s || argv[1] == "--performance"s) {
-            generate_performance_data();
-            return 0;
-        } else if (argv[1] == "-s"s || argv[1] == "--small"s) {
-            test_performance(SMALL);
-            return 0;
-        } else if (argv[1] == "-m"s || argv[1] == "--medium"s) {
-            test_performance(MEDIUM);
-            return 0;
-        } else if (argv[1] == "-l"s || argv[1] == "--large"s) {
-            test_performance(LARGE);
-            return 0;
-        } else {
-            show_help();
-            return 1;
-        }
+        opts[argv[1]]();
     } else {
         show_help();
         return 1;
