@@ -53,6 +53,7 @@ void generate_performance_data() {
 void test_performance(size_t sz) {
     auto const filename = "resources/sort/" + std::to_string(sz) + ".txt";
     auto xs = common::read_from_file<int>(filename);
+    std::cout << "Testing performance for size: " << sz << '\n';
     for (size_t i = 0; i < 5; ++i) {   
         std::cout << "Serial sort:\n";
         auto const serial_time = common::timeit([xs]() mutable { 
