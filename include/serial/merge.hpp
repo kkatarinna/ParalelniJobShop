@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdlib>
 #include <functional>
 #include <vector>
 
@@ -19,9 +20,12 @@ namespace serial {
 
     template <typename It, typename P = std::less<>>
     void merge(It first, It mid, It last, P&& p = {}) {
-        std::vector<common::value_t<It>> into;
-        into.reserve(last - first);
-        merge_impl(first, mid, mid, last, std::back_inserter(into), p);
-        std::move(into.begin(), into.end(), first);
+        auto const size = static_cast<size_t>(last - first);
+        //std::vector<common::value_t<It>> into;
+        //into.reserve(last - first);
+        common::value_t<It> *into = static_cast<common::value_t<It>*>(std::malloc(sizeof(common::value_t<It>)*size));
+        merge_impl(first, mid, mid, last, into, p);
+        std::move(into, into + size, first);
+        std::free(into);
     }
 }

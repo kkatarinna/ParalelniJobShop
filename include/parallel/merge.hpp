@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdlib>
 #include <functional>
 #include <vector>
 
@@ -70,8 +71,9 @@ namespace parallel {
     template <typename It, typename P = std::less<>>
     void merge(It first, It mid, It last, P&& p = {}) {
         auto const size = static_cast<size_t>(last - first);
-        std::vector<common::value_t<It>> into(size);
-        auto& task = *new (tbb::task::allocate_root()) merge_impl{first, mid, mid, last, into.begin(), p};
+        //std::vector<common::value_t<It>> into(size);
+        common::value_t<It> *into = static_cast<common::value_t<It>*>(std::malloc(sizeof(common::value_t<It>)*size));
+        auto& task = *new (tbb::task::allocate_root()) merge_impl{first, mid, mid, last, into, p};
         tbb::task::spawn_root_and_wait(task);
 
         tbb::parallel_for(tbb::blocked_range<size_t>{0, size}, [&] (tbb::blocked_range<size_t> const& range) {
@@ -80,5 +82,6 @@ namespace parallel {
                     *pos = std::move(into[i]);
                 }
         });
+        std::free(into);
     }
 }
