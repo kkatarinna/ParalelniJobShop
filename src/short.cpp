@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <execution>
 #include <fstream>
 #include <iostream>
@@ -6,110 +7,152 @@
 #include <string>
 #include <vector>
 
-#include "common/io.hpp"
-#include "common/time.hpp"
+#include "common/iter.hpp"
 #include "parallel/sort.hpp"
+#include "parallel/merge.hpp"
 #include "serial/sort.hpp"
+#include "serial/merge.hpp"
 
-constexpr size_t SMALL  = 500u;
-constexpr size_t MEDIUM = 5000u;
-constexpr size_t LARGE  = 5000000u;
+constexpr auto MEASUREMENTS = 10;
 
-void show_help() {
+template <typename T>
+auto from_file(std::string filename) -> std::vector<T> {
+    auto f     = std::ifstream{std::move(filename)};
+    auto begin = std::istream_iterator<T>{f};
+    auto end   = std::istream_iterator<T>{};
+    return std::vector<T>{begin, end};
 }
 
-void generate_cutoff_data() {
-    using namespace std::string_literals;
-    auto m_vec = [] {
-        auto const m_inf = "resources/merge/5000000.txt"s;
-        return common::read_from_file<int>(m_inf);
-    }();
-    auto s_vec = [] {
-        auto const s_inf = "resources/sort/5000000.txt"s;
-        return common::read_from_file<int>(s_inf);
-    }();
+template <typename F>
+auto timeit(F&& f) -> long long {
+    namespace chrono = std::chrono;
+    auto const start = chrono::steady_clock::now();
+    f();
+    auto const end = chrono::steady_clock::now();
+    return chrono::duration_cast<chrono::microseconds>(end - start).count();
+}
 
-    std::ofstream m_out{ "results/merge_cutoff_raw.txt" };
-    std::ofstream s_out{ "results/sort_cutoff_raw.txt" };
+template <typename F>
+void test(std::vector<int> xs, std::vector<int> const& ref, F&& func) {
+    func(xs);
+    std::cout << (xs == ref ? "correct" : "incorrect") << '\n';
+}
 
-    for (size_t cutoff = 2; cutoff < LARGE; cutoff <<= 1) {
-        parallel::sort_cutoff = cutoff;
-        parallel::merge_cutoff = cutoff;
-        for (size_t measurements = 0; measurements < 5; ++measurements) {
-            auto const m_parallel_time = common::timeit([m_vec]() mutable {
-                    parallel::merge(m_vec.begin(), m_vec.begin() + LARGE/2, m_vec.end());
-            });
+template <typename SF, typename PF>
+void correctness(std::string ser_msg, SF&& ser_fn, 
+                 std::string par_msg, PF&& par_fn, 
+                 int argc, char *argv[]) {
+    auto xs  = from_file<int>(argv[2]);
+    auto ref = from_file<int>(argv[3]);
+    std::cout << ser_msg;
+    test(xs, ref, ser_fn);
+    std::cout << par_msg;
+    test(xs, ref, par_fn);
+}
 
-            m_out << cutoff << '\t' << m_parallel_time << '\n';
+template <typename SF, typename PF, typename STLF, typename T>
+void performance(SF&& ser_fn, PF&& par_fn, STLF&& stl_fn, std::vector<T>& xs) {
+    for (auto m = 0; m < MEASUREMENTS; ++m)
+        std::cout << xs.size()
+            << "\t\t" << timeit([xs, ser_fn]() mutable { ser_fn(xs); }) 
+            << "\t\t" << timeit([xs, par_fn]() mutable { par_fn(xs); }) 
+            << "\t\t" << timeit([xs, stl_fn]() mutable { stl_fn(xs); }) << '\n';
+}
 
-            auto const s_parallel_time = common::timeit([s_vec]() mutable {
-                    parallel::sort(s_vec.begin(), s_vec.end());
-            });
-
-            s_out << cutoff << '\t' << s_parallel_time << '\n';
-        }
+template <typename Fn, typename T>
+void cutoff(Fn&& f, size_t& co, std::vector<T>& xs) {
+    for (auto cutoff = size_t{2}; cutoff < xs.size(); cutoff *= 2) {
+        co = cutoff;
+        for (auto m = 0; m < MEASUREMENTS; ++m)
+            std::cout << cutoff << "\t\t" << timeit([xs, f]() mutable { f(xs); }) << '\n';
     }
 }
 
-void generate_performance_data() {
+void merge_correctness(int argc, char *argv[]) {
+    using namespace common;
+    correctness(
+        "Serial merge: ",
+        [](std::vector<int>& v) { serial::merge(first(v), mid(v), last(v)); },
+        "Parallel merge: ",
+        [](std::vector<int>& v) { parallel::merge(first(v), mid(v), last(v)); },
+        argc, argv
+    );
 }
 
-void test_performance(size_t sz) {
-    auto const filename = "resources/sort/" + std::to_string(sz) + ".txt";
-    auto xs = common::read_from_file<int>(filename);
-    std::cout << "Testing performance for size: " << sz << '\n';
-    for (size_t i = 0; i < 5; ++i) {   
-        std::cout << "Serial sort:\n";
-        auto const serial_time = common::timeit([xs]() mutable { 
-                serial::sort(xs.begin(), xs.end()); 
-        });
-        std::cout << "Time passed: " << serial_time << " microseconds.\n";
-        
-        std::cout << "Parallel sort:\n";
-        auto const parallel_time = common::timeit([xs]() mutable { 
-                parallel::sort(xs.begin(), xs.end()); 
-        });
-        std::cout << "Time passed: " << parallel_time << " microseconds.\n";
+void merge_performance(int argc, char *argv[]) {
+    using namespace common;
+    auto xs = from_file<int>(argv[2]);
+    performance(
+        [](std::vector<int>& xs) { serial::merge(first(xs), mid(xs), last(xs)); },
+        [](std::vector<int>& xs) { parallel::merge(first(xs), mid(xs), last(xs)); },
+        [](std::vector<int>& xs) { std::inplace_merge(std::execution::par, first(xs), mid(xs), last(xs)); },
+        xs
+    );
+}
 
-        std::cout << "STL parallel stable sort:\n";
-        auto const stl_time = common::timeit([xs]() mutable { 
-                std::stable_sort(std::execution::par, xs.begin(), xs.end()); 
-        });
-        std::cout << "Time passed: " << stl_time << " microseconds.\n";
+void sort_correctness(int argc, char *argv[]) {
+    using namespace common;
+    correctness(
+        "Serial sort: ",
+        [](std::vector<int>& v) { serial::sort(first(v), last(v)); },
+        "Parallel sort: ",
+        [](std::vector<int>& v) { parallel::sort(first(v), last(v)); },
+        argc, argv
+    );
+}
 
-        std::cout << '\n';
-    }
+void sort_performance(int argc, char *argv[]) {
+    using namespace common;
+    auto xs = from_file<int>(argv[2]);
+    performance(
+        [](std::vector<int>& xs) { serial::sort(first(xs), last(xs)); },
+        [](std::vector<int>& xs) { parallel::sort(first(xs), last(xs)); },
+        [](std::vector<int>& xs) { std::stable_sort(std::execution::par, first(xs), last(xs)); },
+        xs
+    );
+}
+
+void show_merge(int argc, char *argv[]) {
+    if (argc == 4) merge_correctness(argc, argv);
+    else merge_performance(argc, argv);
+}
+
+void show_sort(int argc, char *argv[]) {
+    if (argc == 4) sort_correctness(argc, argv);
+    else sort_performance(argc, argv);
+}
+
+void merge_cutoff(int argc, char *argv[]) {
+    using namespace common;
+    auto xs = from_file<int>(argv[2]);
+    cutoff(
+        [](std::vector<int>& xs) { parallel::merge(first(xs), mid(xs), last(xs)); },
+        parallel::merge_cutoff,
+        xs
+    );
+}
+
+void sort_cutoff(int argc, char *argv[]) {
+    using namespace common;
+    auto xs = from_file<int>(argv[2]);
+    cutoff(
+        [](std::vector<int>& xs) { parallel::sort(first(xs), last(xs)); },
+        parallel::sort_cutoff,
+        xs
+    );
 }
 
 int main(int argc, char *argv[]) {
     using namespace std::string_literals;
-
-    auto const opts = std::map{
-        {"-h"s, [] { show_help(); }},
-        {"--help"s, [] { show_help(); }},
-        {"-s"s, [] { test_performance(SMALL); }},
-        {"--small"s, [] { test_performance(SMALL); }},
-        {"-m"s, [] { test_performance(MEDIUM); }},
-        {"--medium"s, [] { test_performance(MEDIUM); }},
-        {"-l"s, [] { test_performance(LARGE); }},
-        {"--large"s, [] { test_performance(LARGE); }},
-        {"-c"s, [] { generate_cutoff_data(); }},
-        {"--cutoff"s, [] { generate_cutoff_data(); }},
-        {"-p"s, [] { generate_performance_data(); }},
-        {"--performance"s, [] { generate_performance_data(); }},
-        {"-ts"s, [] { test_correctness(SMALL); }},
-        {"--test-small"s, [] { test_correctness(SMALL); }},
-        {"-tm"s, [] { test_correctness(MEDIUM); }},
-        {"--test-medium"s, [] { test_correctness(MEDIUM); }},
-        {"-tl"s, [] { test_correctness(LARGE); }},
-        {"--test-large"s, [] { test_correctness(LARGE); }},
-        {"-tt"s, [] { test_trivial(); }},
-        {"--test-trivial"s, [] { test_trivial(); }}
+    const auto opts = std::map<std::string, std::function<void()>>{
+        {"m"s,   [argc, argv] { show_merge(argc, argv);   }},
+        {"s"s,   [argc, argv] { show_sort(argc, argv);    }},
+        {"mc"s,  [argc, argv] { merge_cutoff(argc, argv); }},
+        {"sc"s,  [argc, argv] { sort_cutoff(argc, argv);  }}
     };
-    if (argc == 2) {
-        opts[argv[1]]();
-    } else {
-        show_help();
+    
+    if (argc < 3 || argc > 4)
         return 1;
-    }
+    else
+        opts.at(argv[1])();
 }

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdlib>
 #include <functional>
 #include <vector>
 
@@ -11,7 +10,7 @@
 #include "serial/merge.hpp"
 
 namespace parallel {
-    size_t merge_cutoff = 2048u;
+    auto merge_cutoff = size_t{2048u};
 
     template <typename It, typename Out, typename P>
     struct merge_impl : tbb::task {
@@ -45,7 +44,12 @@ namespace parallel {
                 return nullptr;
 
             if (l_size + r_size <= merge_cutoff) {
-                serial::merge_impl(l_first, l_last, r_first, r_last, o_first, p);
+                serial::merge_impl(
+                    l_first, l_last, 
+                    r_first, r_last, 
+                    o_first, 
+                    p
+                );
                 return nullptr;
             }
 
@@ -57,7 +61,12 @@ namespace parallel {
             auto& c = *new (allocate_continuation()) merge_continuation;
             c.set_ref_count(2);
 
-            auto& right = *new (c.allocate_child()) merge_impl{ midpt + 1, l_last, parpt, r_last, inspt + 1, p };
+            auto& right = *new (c.allocate_child()) merge_impl{
+                midpt + 1, l_last,
+                parpt, r_last,
+                inspt + 1, 
+                p 
+            };
             spawn(right);
 
             recycle_as_child_of(c);
@@ -71,16 +80,31 @@ namespace parallel {
     template <typename It, typename P = std::less<>>
     void merge(It first, It mid, It last, P&& p = {}) {
         auto const size = static_cast<size_t>(last - first);
-        auto *into = static_cast<common::value_t<It>*>(std::malloc(sizeof(common::value_t<It>)*size));
-        auto& task = *new (tbb::task::allocate_root()) merge_impl{first, mid, mid, last, into, p};
+
+        if (size <= merge_cutoff) {
+            serial::merge(first, mid, last, p);
+            return;
+        }
+
+        auto alloc = std::allocator<common::value_t<It>>{};
+        auto *into = alloc.allocate(size);
+        auto& task = *new (tbb::task::allocate_root()) merge_impl{
+            first, mid,
+            mid, last,
+            into, 
+            p
+        };
         tbb::task::spawn_root_and_wait(task);
 
-        tbb::parallel_for(tbb::blocked_range<size_t>{0, size}, [&] (tbb::blocked_range<size_t> const& range) {
+        tbb::parallel_for(
+            tbb::blocked_range<size_t>{0, size},
+            [&] (tbb::blocked_range<size_t> const& range) {
                 for (auto i = range.begin(); i != range.end(); ++i) {
                     auto pos = first + i;
                     *pos = std::move(into[i]);
                 }
-        });
-        std::free(into);
+            }
+        );
+        alloc.deallocate(into, size);
     }
 }
