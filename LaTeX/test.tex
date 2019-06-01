@@ -1,0 +1,611 @@
+\documentclass[a4paper,11pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[serbian]{babel}
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage{fancyvrb}
+
+\VerbatimFootnotes
+
+\setminted[python]{
+    mathescape,
+    linenos,
+    numbersep=4pt,
+    gobble=5,
+    frame=lines,
+    framesep=2mm,
+    fontsize=\footnotesize
+}
+
+\setminted[cpp]{
+    mathescape,
+    linenos,
+    numbersep=4pt,
+    gobble=5,
+    frame=lines,
+    framesep=2mm,
+    fontsize=\footnotesize
+}
+
+\usemintedstyle{pastie}
+
+\author{Mladen Samardžić}
+\title{Analiza jedne implementacije serijskog i paralelnog merge sort algoritma u programskom jeziku C++}
+\date{}
+
+\begin{document}
+    \maketitle
+    \thispagestyle{empty}
+    \newpage
+
+    \thispagestyle{empty}
+    \mbox{}
+    \newpage
+
+    \tableofcontents
+    \newpage
+
+    \thispagestyle{empty}
+    \mbox{}
+    \newpage
+
+    \section{Uvod}
+
+    Sa naglim porastom paralelizacije računarskih sistema u proteklih nekoliko
+    decenija, poraslo je i interesovanje za istraživanje i prikupljanje 
+    algoritama koji bi takve vrste arhitektura iskoristili na što efikasniji
+    način. Sortiranje kolekcija podataka jeedna je od osnovnih operacija, kao i
+    deo mnogih složenijih, u bilo kom dovoljno kompleksnom sistemu; zato je od
+    ključne važnosti odabir adekvatnog algoritma u odnosu na konkretne potrebe i optimizacija
+    njegove implementacije u odnosu na sam sistem. Zbog svoje stabilnosti, merge
+    sort pogodan je za sortiranje podataka po više kriterijuma (na primer, sortiranje
+    osoba po prezimenu, pa imenu), a zbog svog divide-and-conquer pristupa problemu
+    pogodan je za paralelizaciju. \par
+    U ovom tekstu analiziraćemo performanse jedne implementacije ovog algoritma
+    u programskom jeziku C++, poredeći ih sa performansama
+    serijske implementacije istog algoritma i nove, paralelne verzije 
+    \verb|std::stable_sort|, dostupne u standardnoj biblioteci od C++17 verzije jezika.
+    \footnote{
+        Iako je C++17 standardizovan 2017. godine, paralelne verzije STL algoritama
+        za vreme pisanja ovog dokumenta implementirane su, što se tiče najpopularnijih kompajlera,
+        samo u standardnim bibliotekama koje dolaze uz \verb|g++| 9+ i \verb|msvc++| 19.14+.
+}
+    Pri paralelizaciji algoritma koristićemo apstrakciju zadataka (\textit{tasks}), obezbeđenu od
+    strane Intel-ove Thread Building Blocks biblioteke. Sva merenja vršićemo
+    na Intel i7-6700HQ četvorojezgarnom (sa osam logičkih jezgara) procesoru i Ubuntu 19.04 operativnom
+    sistemu, koristeći verziju 9.0.1 \verb|g++| kompajlera. Dodatne relevantne konfiguracije
+    kompajlera navešćemo su u adekvatnim sekcijama.
+
+    \newpage
+
+    \section{Osnovne karakteristike serijskog merge sort-a}
+
+    Osnovna ideja merge sort algoritma je jednostavna i može se izvesti principom
+    matematičke indukcije na sledeći način: znamo da sortiramo prazan niz i niz sa jednim elementom --
+    svaki takav niz je sortiran. Pretpostavimo onda da znamo da sortiramo nizove dužina
+    $2,3, \dots, n$. Niz dužine $n + 1$ sortiraćemo tako što ga podelimo na dva podniza
+    dužina $\lfloor \frac{n + 1}{2} \rfloor$ i $\lceil \frac{n + 1}{2} \rceil$, sortiramo
+    te podnizove, pa ih prespojimo nazad u početni niz. Jednostavna Python implementacija
+    izgledala bi ovako:
+    \begin{minted}{python}
+        def merge_sort(xs, start, end):
+          if end - start < 2:
+            return
+          mid = (start + end) // 2
+          merge_sort(xs, start, mid)
+          merge_sort(xs, mid, end)
+          merge(xs, start, mid, end)
+    \end{minted}
+    Takvu funkciju direktno bismo pozvali na sledeći način:
+    \begin{minted}{python}
+        merge_sort(xs, 0, len(xs))
+    \end{minted}
+    Ostaje nam, naravno, da definišemo proces spajanja sortiranih podnizova, što je tačno
+    zadatak \verb|merge| funkcije u prethodnom primeru. Podnizove ćemo spajati tako
+    što ćemo u isto vreme šetati po oba i porediti odgovarajuće elemente. Manji element
+    dodaćemo u originalni niz, a indeks u podniz koji odgovara tom elementu povećaćemo za jedan,
+    pošto smo se tog elementa rešili. Kada u potpunosti prođemo kroz jedan od podnizova, sve elemente
+    drugog dodaćemo na kraj originalnog niza, jer su po preduslovima algoritma sortirani, a po
+    čuvanim invarijantama veći od svih elemenata koje smo prethodno dodali. Vrativši se na
+    primer, Python implementacija \verb|merge| izgledala bi ovako:
+    \begin{minted}{python}
+        def merge(xs, start, mid, end):
+          left    = xs[start:mid]
+          right   = xs[mid:end]
+          i, j, k = 0, 0, 0
+          while i < len(left) and j < len(right):
+            if left[i] <= right[j]:
+              xs[k] = left[i]
+              i += 1
+              k += 1
+            else:
+              xs[k] = right[j]
+              j += 1
+              k += 1
+          while i < len(left):
+            xs[k] = left[i]
+            i += 1
+            k += 1
+          while j < len(right):
+            xs[k] = right[j]
+            j += 1
+            k += 1
+    \end{minted}
+    Primetimo nekoliko stvari:
+    \begin{itemize}
+        \begin{item}
+            Morali smo da izdvojimo dodatnih $O(\verb|end| - \verb|start|)$ memorije za podnizove \verb|left| i \verb|right|.
+            To je nužno jer bismo inače izgubili neke elemente pri prepisivanju u originalni niz.
+        \end{item}
+        \begin{item}
+            Pošto prolazimo kroz svaki element niza \verb|xs| tačno jednom (kroz kopije njegovih podnizova),
+            vremenska kompleksnost je takođe $O(\verb|end| - \verb|start|)$.
+        \end{item}
+        \begin{item}
+            Uslov na liniji 6 mogli smo napisati i kao \verb|left[i] < right[j]|, ali bismo
+            onda izgubili jednu od najbitnijih osobina merge sort algoritma: njegovu stabilnost. Algoritam
+            za sortiranje je stabilan ako čuva redosled elemenata koji se u svrhe sortiranja porede kao
+            jednaki. Ovo nema nikakav značaj ukoliko radimo sa tipovima koji se mogu porediti samo na jedan
+            način; ako, međutim, sortiramo radnike po prezimenu, možda nam je bitno da se radnicima sa istim prezimenima
+            održi redosled u nizu (jer smo ih pre toga sortirali po odeljenju u kom rade).
+        \end{item}
+    \end{itemize}
+    Kako sada imamo potpuni opis algoritma, možemo analizirati njegove asimptotske performanse.\par
+    Vodeći se Python implementacijom, vreme izvršavanja možemo matematički opisati kao 
+    $T(n) = 2T(\frac{n}{2}) + O(n)$. Jednostavnom primenom master teoreme na prethodnu
+    diferentnu jednačinu lako se dolazi do zaključka da je vremenska kompleksnost merge sort-a $O(n \log n)$.\par
+    Prostorna kompleksnost u potpunosti proističe iz faze spajanja podnizova, a, kako tada alociramo
+    količinu memorije proporcionalnu dužini niza, potrebna memorija linearno je zavisna od broja elemenata niza
+    (tj. prostorna kompleksnost je $O(n)$).\par
+    \newpage
+    
+    \section{Paralelni merge sort}
+    Vratimo se na prvi primer:
+    \begin{minted}{python}
+        def merge_sort(xs, start, end):
+          if end - start < 2:
+            return
+          mid = (start + end) // 2
+          merge_sort(xs, start, mid)
+          merge_sort(xs, mid, end)
+          merge(xs, start, mid, end)
+    \end{minted}
+    Dva rekurzivna poziva na linijama 5 i 6 međusobno su nezavisna, jer svaki od njih radi sa disjunktnim
+    polovinama niza, pa u principu mogu da se izvršavaju paralelno. Trivijalnom transformacijom u pseudo-Python
+    kod dobijamo prvu verziju paralelnog merge sort algoritma:
+    \begin{minted}{python}
+        def merge_sort_par_v1(xs, start, end):
+          if end - start < 2:
+            return
+          mid = (start + end) // 2
+          fork merge_sort_par_v1(xs, start, mid)
+          merge_sort_par_v1(xs, mid, end)
+          join
+          merge(xs, start, mid, end)
+    \end{minted}
+    Pošto \verb|merge| očekuje potpuno sortirane podnizove na ulazu, moramo da sačekamo da se oba
+    podniza sortiraju (tome služi \verb|join| na sedmoj liniji) pre nego što je pozovemo.
+    Ovo rešenje, iako korak u pravom smeru, nije najoptimalnije u pogledu paralelizacije.\par
+    Prvo, apstrakcije za rad sa konkurentnim i paralalenim kodom (nezavisno da li su to niti,
+    zadaci, procesi, kanali ili nešto sasvim drugo) dolaze sa određenim dodatnim zahtevima po pitanju resursa.
+    Na primer, za niz od 4 elementa, pozivanje funkcije iz prethodnog primera stvara 3 niti, što oduzima
+    mnogo više vremena od samog sortiranja. Generalno, stvara se onoliko niti koliko ima levih grana
+    u binarnom stablu poziva \verb|merge_sort_par_v1|.\par 
+    Ovaj problem rešićemo tako što ćemo definisati konstantu \verb|cutoff|, koja će kontrolisati kada
+    će se pozivati paralelna, a kada serijska verzija funkcije. Najpogodnija vrednost \verb|cutoff|
+    suštinski nalazi se eskperimentalnim metodama i predstavlja balans između povećanja performansi
+    deljenjem posla na više procesorskih jezgara i gubitka stvaranjem previše niti. Definisanje ovakve
+    konstante nije specifično za merge sort, nego je karakteristika većine paralelnih algoritama baziranih
+    na rekurziji. Sa uvedenom konstantom, naš pseudokod izgleda ovako:
+    \begin{minted}{python}
+        # cutoff defined somewhere else
+        def merge_sort_par_v2(xs, start, end):
+          if end - start <= cutoff:
+            merge_sort(xs, start, end)
+          mid = (start + end) // 2
+          fork merge_sort_par_v2(xs, start, mid)
+          merge_sort_par_v2(xs, mid, end)
+          join
+          merge(xs, start, mid, end)
+    \end{minted}
+    Ova promena trebalo bi da značajno poboljša performanse i za manje i za veće veličine nizova, u zavisnosti
+    od izabrane \verb|cutoff| vrednosti.\par
+    Druga tačka poboljšanja je paralelizacija samog procesa spajanja podnizova. Iz originalnog \verb|merge|
+    koda nije očigledno da je moguće uraditi to na smislen način, ali jednostavnom promenom interfejsa
+    i inherentno sekvencijalnog pristupa spajanju možemo doći do razumne verzije algoritma na relativno
+    jednostavan način.\par
+    Prvo, umesto da \verb|merge| spaja podnizove u mestu, spajaće ih u novi izlazni niz. Primetimo da ovo
+    ne zahteva dodatnu memoriju: samo smo pomerili dužnost alociranja memorije izvan funkcije. Sada
+    merge algoritam prima dva podniza (u daljem tesktu: levi i desni) kao ulazne parametre i niz u koji
+    će se spajanje izvršiti kao izlazni parametar.\par
+    Zatim, pretpostavićemo, bez gubljenja opštosti, da je dužina levog podniza veća ili jednaka dužini desnog.
+    Ukoliko to nije slučaj, samo ćemo pozvati algoritam sa desnim podnizom kao levim i levim kao desnim.
+    Uvešćemo sledeću notaciju: $p_k , 0 \le k < n$ su indeksi u levi podniz, $q_k , 0 \le k < m$ indeksi
+    u desni podniz, a $p_n$ i $q_m$ indeksi koji označavaju krajeve odgovarajućih podnizova.
+     Paralelni merge algoritam onda se može opisati na sledeći način:
+    \begin{itemize}
+        \begin{item}
+            Izabraćemo srednji element levog podniza, $\bar{a}$. Neka je indeks tog elementa $r_1$. Onda je
+            $r_1 = \lfloor \frac{p_1 + p_n}{2} \rfloor$.
+        \end{item}
+        \begin{item}
+            Neka je $r_2$ indeks prvog elementa u desnom podnizu takvog da nije manji od $\bar{a}$.
+        \end{item}
+        \begin{item}
+            Neka je $r_3$ indeks u izlazni niz gde će $\bar{a}$ biti smešten.
+            Pošto znamo da elemenata manjih (ili jednakih) od $\bar{a}$ u levom podnizu ima $r_1$, a
+            u desnom (striktno manjih) $r_2$, onda je $r_3$ = $r_1 - p_0$ + $r_2 - q_0$.
+        \end{item}
+        \begin{item}
+            U izlazni niz na poziciju $r_3$ upisaćemo $\bar{a}$.
+        \end{item}
+        \begin{item}
+            Pozvaćemo algoritam rekurzivno dva puta. Argumenti prvog poziva biće 
+            levi podniz u intervalu indeksa $[p_0 , r_1)$, desni u intervalu
+            indeksa $[q_0 , r_2)$ i izlazni niz u intervalu $[0, r_3)$. Argumenti
+            drugog poziva biće levi podniz u intervalu indeksa $[r_1 + 1, p_n)$, desni u intervalu
+            $[r_2, q_m)$ i izlazni niz u intervalu $[r_3 + 1, m + n)$. Ova dva poziva
+            radiće nad disjunktnim podacima, pa se bezbedno mogu izvršavati iz različitih
+            niti.
+        \end{item}
+    \end{itemize}
+    U pseudo-Python-u, implementacija ovog algoritma imala bi sledeći oblik:
+    \begin{minted}{python}
+        # merge_cutoff defined somewhere else
+        def merge_par(xs, p0, pn, q0, qm, out, oi):
+          l_size = pn - p1
+          r_size = qn - q1
+          if l_size < r_size:
+            l_size, r_size = r_size, l_size
+            p0, q0 = q0, p0
+            pn, qm = qm, pn
+          if l_size == 0:
+            return
+          if l_size + r_size <= merge_cutoff:
+            merge_into(xs, p0, pn, q0, qm, out, oi)
+          r1 = (p1 + pn) // 2
+          r2 = lower_bound(xs, q1, qm, xs[r1])
+          r3 = oi + (r1 - p0) + (r2 - q0)
+          out[r3] = xs[r1]
+          fork merge_par(xs, p0, r1, q0, r2, out, oi)
+          merge_par(xs, r1 + 1, pn, r2, qm, out, r3)
+          join
+    \end{minted}
+    Ova implementacija dodaje parametar \verb|oi|, koji je suštinski potreban samo da bismo
+    znali odakle treba indeksirati izlazni niz \verb|out|. Takođe, pretpostavićemo da su funkcije
+    \verb|merge_into| i \verb|lower_bound| već implementirane; \verb|merge_into| je jednostavna
+    adaptacija \verb|merge| funkcije od ranije interfejsu \verb|merge_par|
+    (uz minimalnu promennu semantike tako da spaja u izlazni niz umesto u mestu),
+    dok je \verb|lower_bound| efektivno binarna pretraga. Konačna verzija paralelnog merge sort-a
+    onda izgleda ovako:
+    \begin{minted}{python}
+        # cutoff defined somewhere else
+        def merge_sort_par_v3(xs, start, end):
+          if end - start <= cutoff:
+            merge_sort(xs, start, end)
+          mid = (start + end) // 2
+          fork merge_sort_par_v3(xs, start, mid)
+          merge_sort_par_v3(xs, mid, end)
+          join
+          out = [0] * (end - start)
+          merge_par(xs, start, mid, mid, end, out, 0)
+    \end{minted}
+    \newpage
+
+    \section{Implementacija}
+    Naše implementacije serijskog i paralelnog merge sort algoritma imaju cilj da
+    budu generičke prirode: po tipu kontejnera koji se sortira, po tipu elemenata
+    tog kontejnera i po predikatu koji se koristi radi odlučivanja da li je jedan
+    element manji od drugog. Iz tog razloga, kao i zbog konzistentnosti sa već postojećim
+    alatima pruženim od strane standardne biblioteke, interfejs naše implementacije
+    baziran je na interfejsu \verb|std::sort|.\par
+    U ovoj sekciji izdvojićemo anotirane najbitnije delove implementacije; zbog toga su
+    većinom izostavljene \verb|#include| direktive i \verb|std::| i \verb|tbb::|
+    prefiksi. Serijske verzije algoritama nalaze se u prostoru imena \verb|serial|,
+    paralelne u \verb|parallel|, a nekoliko alijasa za tipove iteratora u \verb|common|
+    prostoru imena.
+
+    \subsection{Serijski merge i merge sort}
+    Serijski merge sort direktan je prevod iz Python primera u generički C++:
+    \begin{minted}{cpp}
+        // include/serial/sort.hpp
+        template <typename It, typename P = less<>>
+        void serial::sort(It first, It last, P&& p = {}) {
+          auto const size = static_cast<size_t>(last - first);
+          if (size < 2)
+            return;
+
+          auto const mid = first + size/2;
+          serial::sort(first, mid, p);
+          serial::sort(mid, last, p);
+          serial::merge(first, mid, last, p);
+        }
+    \end{minted}
+    Sve funckije (tj. šabloni za funkcije) ove implementacije očekuju da 
+    \verb|It| zadovoljava uslov \verb|LegacyRandomAccessIterator|, dok \verb|P| treba da bude
+    callable (bilo pokazivač na funkciju, funktor ili lambda) koji prima dva
+    argumenta tipova implicitno konvertibilnih u tip elementa kontejnera čiji je iterator
+    \verb|It|, sa povratnim tipom implicitno konvertibilnim u \verb|bool|. Tip elemenata 
+    kontejnera mora da bude \verb|MoveAssignable| i \verb|MoveConstructible|.\par
+    \verb|merge| je podeljen u dve funkcije: \verb|merge| i \verb|merge_impl|:
+    \begin{minted}{cpp}
+      // include/serial/merge.hpp
+      template <typename It, typename Out, typename P = less<>>
+      void serial::merge_impl(It lf, It ll, It rf, It rl, Out of, P&& p) {
+        while (lf != ll && rf != rl)
+          if (!p(*rf, *lf))
+            *of++ = move(*lf++);
+          else
+            *of++ = move(*rf++);
+        of = move(lf, ll, of);
+        move(rf, rl, of);
+      }
+    \end{minted}
+    \verb|merge_impl| spaja dva intervala $[\verb|lf|, \verb|ll|)$ i $[\verb|rf|, \verb|rl|)$
+    u kolekciju na koju pokazuje iterator \verb|out|. \verb|Out| treba da zadovoljava uslov
+    \verb|LegacyOutputIterator|. U suštini, kao i \verb|sort| malopre, i ovo je skoro pa direktan prevod Python funkcije
+    definisane ranije, s tim da utilizuje move semantiku specifičnu za C++ i umesto operatora $<$ koristi
+    komparator \verb|P|, gde \verb|p(x, y)| vraća \verb|true| ukoliko je \verb|x| manje od \verb|y| i
+    \verb|false| inače. Zbog toga je uslov \verb|!p(*rf, *lf)| ekvivalentan uslovu \verb|left[i] <= right[j]|
+    iz Python implementacije, sa ulogom održavanja stabilnosti algoritma. Ova funkcija u suštini ne predstavlja
+    javni interfejs (implicirano \verb|_impl| sufiksom), već se koristi pri implementaciji \verb|merge| i paralelnog
+    merge algoritma (doduše, ništa osim proizvoljnog izbora od strane autora ne sprečava interfejs da bude javan, ako
+    uzmemo u obzir da \verb|std::merge| semantički izgleda ekvivalentno).\par
+    \verb|merge| se onda svodi na alociranje kontejnera u koji će se podnizovi spajaju:
+    \begin{minted}{cpp}
+        // include/serial/merge.hpp
+        template <typename It, typename P = less<>>
+        void serial::merge(It first, It mid, It last, P&& p = {}) {
+          auto const size = static_cast<size_t>(last - first);
+          auto alloc = allocator<value_t<It>>{};
+          auto *into = alloc.allocate(size); 
+          merge_impl(first, mid, mid, last, into, p);
+          move(into, into + size, first);
+          alloc.deallocate(into, size);
+        }
+    \end{minted}
+    Ovde \verb|value_t<It>| predstavlja tip na koji pokazuje iterator tipa \verb|It|, a njegova se definicija
+    nalazi u prostoru imena \verb|common|.
+    Jedan detalj koji će pažljivom čitaocu zapasti za oko je taj da za dinamičku alokaciju niza u koji ćemo spajati podnizove umesto \verb|std::vector| ili operatora 
+    \verb|new| koristimo \verb|std::allocator| i njegove funkcije članice \verb|allocate| i
+    \verb|deallocate|. To smo uradili zato što i \verb|std::vector| i operator \verb|new|
+    pozivaju konstruktore odgovarajućeg tipa, dok \verb|allocate| jednostavno alocira dovoljno
+    prostora za taj tip, bez konstrukcije. Generalno, za proizvoljan tip \verb|T| ne možemo da garantujemo da
+    podržava bilo koji određeni konstruktor. Najzad, u zavisnosti od tipa konstrukcija može biti skupa, a u sklopu
+    samog algoritma nema nikakvu ulogu: bitno nam je da imamo dovoljno prostora u memoriji gde bismo mogli da spojimo
+    podnizove, a ne šta se u toj memoriji nalazi pre samog procesa.
+    
+    \subsection{Paralelni merge i merge sort}
+
+    Za realizaciju paralelnih algoritama koristićemo Intel-ovu TBB biblioteku i apstrakciju zadataka koju
+    ona pruža. Svaki od naših algoritama biće umotan u klasu koja nasleđuje \verb|tbb::task| (ili neku njenu subklasu).
+    Za \verb|tbb::task| specifična je funkcija članica \verb|execute|, čije telo predstavlja posao delegiran
+    tom zadatku, a koja vraća pokazivač na sledeći zadatak koji treba izvršiti. Kompozicijom zadataka stvaramo
+    usmeren aciklični graf (DAG) koji predstavlja ukupan algoritam koji implementiramo. U našem slučaju, DAG će
+    biti jednostavno binarno stablo, ali dosta paralelnih algoritama zahteva komplikovaniju reprezentaciju
+    i koordinaciju između individualnih zadataka.
+    Kako poziv ovako realizovanog algoritma nije trivijalan, njega ćemo umotati u funkciju sa identičnim interfejsom
+    onom u odgovarajućoj serijskoj verziji.\par
+    Na dalje, posmatraćemo samo \verb|execute| funkcije klasa, jer se isključivo u njima zapravo dešava nešto. Sve
+    promenljive članice direktno odgovaraju ulazim parametrima \verb|serial::sort| i \verb|serial::merge_impl|, a svi
+    konstruktori samo postavljaju odgovarajuće promenljive u zadato stanje.\par
+    Posmatraćemo prvo klasu \verb|sort_impl|:
+    \begin{minted}{cpp}
+        template <typename It, typename P>
+        class parallel::sort_impl : public task {
+        private:
+          // member variables and sort_continuation definition
+        public:
+          // constructor
+          // ...
+          auto execute() -> task* {
+            auto const size = static_cast<size_t>(last - first);
+            if (size <= sort_cutoff) {
+              serial::sort(first, last, p);
+              return nullptr;
+            }
+
+            auto const mid = first + size/2;
+
+            auto& c = *new (allocate_continuation()) sort_continuation{
+              first, mid, last, p
+            };
+            c.set_ref_count(2);
+
+            auto& left = *new (c.allocate_child()) sort_impl{first, mid, p};
+            spawn(left);
+
+            recycle_as_child_of(c);
+            first = mid;
+            return this;
+          }
+        };
+    \end{minted}
+    Kao što smo diskutovali pri opisivianju generalnih karakteristika paralelnog merge sort-a,
+    i ovde definišemo \verb|cutoff| (ovde definisanu kao \verb|sort_cutoff|) konstantu koja tera
+    algoritam da pređe u serijski režiim ukoliko je ulazni interval iteratora dovoljno mali. Mešavinom
+    eksperimentalne metode i nezavisnog istraživanja, za ovu implementaciju definisaćemo \verb|sort_cutoff|
+    kao 2048. Pri analizi performansi algoritama variraćemo vrednost \verb|cutoff| u cilju razumevanja
+    ponašanja karakteristika performansi u odnosu na nju. Druga polovina \verb|execute| raspoređuje dva
+    zadatka koji odgovaraju sortiranju polovina niza, uključujući optimizaciju stvaranja što manje instanci
+    zadataka.\par
+    Ideja je da određene zadatke koji nemaju šta da rade, a nisu uništeni jer čekaju druge zadatke
+    recikliramo umesto da konstanto pravimo nove. Za ovo nam je koristan koncept kontinuacija.
+    Kontinuacije su zadaci čija je namena da čekaju druge zadatke i eventualno odrade neki posao nakon čekanja.
+    U \verb|parallel::sort_impl::execute| konstruisaćemo kontinuaciju \verb|c| (linije 17--20), koja će pratiti izvršavanje
+    sortiranje polovina niza, pa konstruisati i pokrenuti novi zadatak za sortiranje levog podniza (linije 22--23) i reciklirati,
+    trenutni zadatak tako da sortira desni podniz (linije 25--27).\par
+    Posao \verb|parallel::sort_impl::sort_continuation| je jednostavan:
+    \begin{minted}{cpp}
+      template <typename It, typename P>
+      class parallel::sort_impl : public task {
+      private:
+        // sort_impl member variables
+        struct sort_continuation {
+          // sort_continuation member variables
+          auto execute() -> task* {
+            parallel::merge(first, mid, last, p);
+            return nullptr;
+          }
+        };
+      public:
+        // constructor
+        // execute function
+      };
+    \end{minted}
+    Ona samo čeka završetak zadataka koji su joj dodedljeni na čekanje (ovo je implicitno u tome da se
+    \verb|sort_continuation| u \verb|sort_impl::execute| alocira kao kontinuacija i postavlja sve svoje podzadatke kao podzadatke kontinuacije), i nakon toga
+    poziva funkciju koja paralelno spaja podnizove $[\verb|first|, \verb|mid|)$ i $[\verb|mid|, \verb|last|)$.\par
+    Javni interfejs za poziv ovog algoritma svodi se na kreiranje i izvršavanje korenskog zadatka:
+    \begin{minted}{cpp}
+      template <typename It, typename P = less<>>
+      void parallel::sort(It first, It last, P&& p = {}) {
+        if (last - first <= sort_cutoff) {
+          serial::sort(first, last, p);
+          return;
+        }
+        
+        auto& task = *new (task::allocate_root()) sort_impl{
+          first, last, p
+        };
+        task::spawn_root_and_wait(task);
+      }
+    \end{minted}
+    Dodaćemo na samom početku tela funkcije još jednu proveru za prelazak u serijski režim, da ne bismo
+    trošili procesorske cikluse na alociranje TBB zadatka, koje je u principu netrivijalno skupo. Ovom transformacijom
+    bi trebalo da smo izjednačili performanse paralelnog i serijskog algoritma za male nizove.\par
+    \verb|parallel::merge_impl| klasa funkcioniše na sličan način:
+    \begin{minted}{cpp}
+      template <typename It, typename Out, typename P>
+      class parallel::merge_impl : public task {
+      private:
+        // member variables and merge_continuation definition
+      public:
+        // constructor
+        // ...
+        auto execute() -> task* {
+          auto l_size = static_cast<size_t>(l_last - l_first);
+          auto r_size = static_cast<size_t>(r_last - r_first);
+
+          if (l_size < r_size) {
+            swap(l_first, r_first);
+            swap(l_last, r_last);
+            swap(l_size, r_size);
+          }
+
+          if (l_size == 0)
+            return nullptr;
+
+          if (l_size + r_size <= merge_cutoff) {
+            serial::merge_impl(
+              l_first, l_last, 
+              r_first, r_last, 
+              o_first, 
+              p
+            );
+            return nullptr;
+          }
+
+          auto const midpt = l_first + l_size/2;
+          auto const parpt = lower_bound(r_first, r_last, *midpt, p);
+          auto const inspt = o_first + (midpt - l_first) + (parpt - r_first);
+          *inspt = *midpt;
+
+          auto& c = *new (allocate_continuation()) merge_continuation;
+          c.set_ref_count(2);
+
+          auto& right = *new (c.allocate_child()) merge_impl{
+            midpt + 1, l_last,
+            parpt, r_last,
+            inspt + 1, 
+            p 
+          };
+          spawn(right);
+
+          recycle_as_child_of(c);
+          l_last = midpt;
+          r_last = parpt;
+
+          return this;
+        }
+      };
+    \end{minted}
+    Na sličan način kao i u \verb|parallel::sort_impl|, i ovde koristimo \verb|cutoff| za prelazak
+    u serijski režim rada (u ovom slučaju nazvana je \verb|merge_cutoff|), koja je takođe definisana kao 2048.
+    U prvoj polovini \verb|execute| radimo posao koji smo izveli u diskusiji paralelnog merge algoritma.
+    Zatim, na sličan način kao i u \verb|parallel::sort_impl| klasi, konstruišemo kontinuaciju \verb|c|,
+    konstruišemo prvi podzadatak i recikliramo trenutni zadatak kao drugi podzadatak.\par
+    U ovom slučaju, struktura
+    koja predstavlja kontinuaciju je trivijalna, jer je spajanje podnizove poptuno u nadležnosti ne-kontinuacijskih
+    zadataka (nasuprot sortiranju, gde nakon sortiranja podnizova moramo još i da ih spojimo).
+    \begin{minted}{cpp}
+      template <typename It, typename Out, typename P>
+      class parallel::merge_impl : public task {
+      private:
+        // member variables
+        struct merge_continuation : empty_task { };
+      public:
+        // constructor
+        // execute function
+      };
+    \end{minted}
+    \verb|tbb::empty_task| je subklasa \verb|tbb::task| čija \verb|execute| funkcija ne radi ništa, što
+    je savršeno za naše potrebe, iz malopre navedenih razloga (setimo se još jednom da je čekanje na zadatke
+    jedne kontinuacije implicitno definisano pri konstrukciji te kontinuacije i dodavanja podzadataka toj kontinuaciji).\par
+    Da bismo adaptirali interfejs poziva paralelnog merge algoritma interfejsu \verb|serial::merge| i interfejsu
+    koji očekuje njen poziv u \verb|sort_impl::execute|, moraćemo malo da se pomučimo:
+    \begin{minted}{cpp}
+      template <typename It, typename P = less<>>
+      void merge(It first, It mid, It last, P&& p = {}) {
+        auto const size = static_cast<size_t>(last - first);
+
+        if (size <= merge_cutoff) {
+          serial::merge(first, mid, last, p);
+          return;
+        }
+
+        auto alloc = allocator<value_t<It>>{};
+        auto *into = alloc.allocate(size);
+        auto& task = *new (task::allocate_root()) merge_impl{
+          first, mid,
+          mid, last,
+          into, 
+          p
+        };
+        task::spawn_root_and_wait(task);
+
+        parallel_for(
+          blocked_range<size_t>{0, size},
+          [&] (blocked_range<size_t> const& range) {
+            for (auto i = range.begin(); i != range.end(); ++i) {
+              auto pos = first + i;
+              *pos = move(into[i]);
+            }
+          }
+        );
+        alloc.deallocate(into, size);
+      }
+    \end{minted}
+    Slično kao i za paralelni merge sort, i ovde imamo dodatnu proveru za male intervale, dinamičku
+    alokaciju preko \verb|std::allocator| i konstrukciju i pozivanje korenskog zadatka. Međutim,
+    na kraju funkcije treba da iz privremenog niza u koji smo spojili podnizove pomerimo elemente u
+    originalni niz. U serijskoj verziji, to smo radili jednostavnim pozivom funkcije \verb|std::move|
+    nad relevantnim iteratorima, ali ovde imamo priliku da to paralelizujemo, što je savršena prilika
+    da iskoristimo \verb|tbb::parallel_for|. Ako zanemarimo detalje postavke petlje, \verb|tbb::parallel_for|
+    svodi se na običnu \verb|for| petlju (ili poziv \verb|std::for_each|), gde se na deklarativan način TBB biblioteci prepušta
+    odgovornost raspoređivanja niti za izvršavanje iteracija petlje.
+\newpage
+    \section{Analiza performansi}
+    \newpage
+
+    \section{Zaključak}
+    \newpage
+
+    \section{Tabele}
+    \newpage
+
+    \section{Literatura}
+    \newpage
+\end{document}

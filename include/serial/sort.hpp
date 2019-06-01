@@ -7,11 +7,11 @@
 namespace serial {
     template <typename It, typename P = std::less<>>
     void sort(It first, It last, P&& p = {}) {
-        auto const size = last - first;
+        auto const size = static_cast<size_t>(last - first);
         if (size < 2)
             return;
 
-        auto mid = first + size/2;
+        auto const mid = first + size/2;
         serial::sort(first, mid, p);
         serial::sort(mid, last, p);
         serial::merge(first, mid, last, p);

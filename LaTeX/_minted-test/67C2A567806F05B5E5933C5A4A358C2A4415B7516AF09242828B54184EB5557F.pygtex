@@ -1,0 +1,12 @@
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}]
+   \PYG{c+c1}{// include/serial/merge.hpp}
+   \PYG{k}{template} \PYG{o}{\PYGZlt{}}\PYG{k}{typename} \PYG{n}{It}\PYG{p}{,} \PYG{k}{typename} \PYG{n}{P} \PYG{o}{=} \PYG{n}{less}\PYG{o}{\PYGZlt{}\PYGZgt{}\PYGZgt{}}
+   \PYG{k+kt}{void} \PYG{n}{serial}\PYG{o}{::}\PYG{n}{merge}\PYG{p}{(}\PYG{n}{It} \PYG{n}{first}\PYG{p}{,} \PYG{n}{It} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{It} \PYG{n}{last}\PYG{p}{,} \PYG{n}{P}\PYG{o}{\PYGZam{}\PYGZam{}} \PYG{n}{p} \PYG{o}{=} \PYG{p}{\PYGZob{}\PYGZcb{})} \PYG{p}{\PYGZob{}}
+     \PYG{k}{auto} \PYG{k}{const} \PYG{n}{size} \PYG{o}{=} \PYG{k}{static\PYGZus{}cast}\PYG{o}{\PYGZlt{}}\PYG{k+kt}{size\PYGZus{}t}\PYG{o}{\PYGZgt{}}\PYG{p}{(}\PYG{n}{last} \PYG{o}{\PYGZhy{}} \PYG{n}{first}\PYG{p}{);}
+     \PYG{k}{auto} \PYG{n}{alloc} \PYG{o}{=} \PYG{n}{allocator}\PYG{o}{\PYGZlt{}}\PYG{n}{value\PYGZus{}t}\PYG{o}{\PYGZlt{}}\PYG{n}{It}\PYG{o}{\PYGZgt{}\PYGZgt{}}\PYG{p}{\PYGZob{}\PYGZcb{};}
+     \PYG{k}{auto} \PYG{o}{*}\PYG{n}{into} \PYG{o}{=} \PYG{n}{alloc}\PYG{p}{.}\PYG{n}{allocate}\PYG{p}{(}\PYG{n}{size}\PYG{p}{);}
+     \PYG{n}{merge\PYGZus{}impl}\PYG{p}{(}\PYG{n}{first}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{last}\PYG{p}{,} \PYG{n}{into}\PYG{p}{,} \PYG{n}{p}\PYG{p}{);}
+     \PYG{n}{move}\PYG{p}{(}\PYG{n}{into}\PYG{p}{,} \PYG{n}{into} \PYG{o}{+} \PYG{n}{size}\PYG{p}{,} \PYG{n}{first}\PYG{p}{);}
+     \PYG{n}{alloc}\PYG{p}{.}\PYG{n}{deallocate}\PYG{p}{(}\PYG{n}{into}\PYG{p}{,} \PYG{n}{size}\PYG{p}{);}
+   \PYG{p}{\PYGZcb{}}
+\end{Verbatim}

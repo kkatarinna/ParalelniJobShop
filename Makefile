@@ -50,9 +50,11 @@ analyze-cutoff-data:
 analyze-perf-data:
 	python3 scripts/analyze/perf_data.py
 
-test-correctness: build generate-tests test-small test-medium test-large test-trivial
+test-correctness: test-small test-medium test-large test-trivial
 
-test-performance: build generate-tests perf-small perf-medium perf-large
+test-performance: perf-small perf-medium perf-large
+
+test: test-correctness test-performance
 
 analyze: build generate-tests generate-cutoff-data generate-perf-data analyze-cutoff-data analyze-perf-data
 

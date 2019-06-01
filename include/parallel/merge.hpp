@@ -13,15 +13,15 @@ namespace parallel {
     auto merge_cutoff = size_t{2048u};
 
     template <typename It, typename Out, typename P>
-    struct merge_impl : tbb::task {
+    class merge_impl : public tbb::task {
     private:
-        struct merge_continuation : tbb::empty_task { };
-    public:
         It l_first, l_last;
         It r_first, r_last;
         Out o_first;
         P p;
 
+        struct merge_continuation : tbb::empty_task { };
+    public:
         merge_impl(It lf, It ll, It rf, It rl, Out of, P p)
             : l_first(std::move(lf))
             , l_last(std::move(ll))
@@ -31,8 +31,8 @@ namespace parallel {
             , p(std::move(p)) { }
 
         auto execute() -> tbb::task* {
-            auto l_size = l_last - l_first;
-            auto r_size = r_last - r_first;
+            auto l_size = static_cast<size_t>(l_last - l_first);
+            auto r_size = static_cast<size_t>(r_last - r_first);
 
             if (l_size < r_size) {
                 std::swap(l_first, r_first);

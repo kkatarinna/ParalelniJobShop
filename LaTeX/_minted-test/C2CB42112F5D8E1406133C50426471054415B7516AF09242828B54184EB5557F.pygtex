@@ -1,0 +1,14 @@
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}]
+ \PYG{k}{template} \PYG{o}{\PYGZlt{}}\PYG{k}{typename} \PYG{n}{It}\PYG{p}{,} \PYG{k}{typename} \PYG{n}{P} \PYG{o}{=} \PYG{n}{less}\PYG{o}{\PYGZlt{}\PYGZgt{}\PYGZgt{}}
+ \PYG{k+kt}{void} \PYG{n}{parallel}\PYG{o}{::}\PYG{n}{sort}\PYG{p}{(}\PYG{n}{It} \PYG{n}{first}\PYG{p}{,} \PYG{n}{It} \PYG{n}{last}\PYG{p}{,} \PYG{n}{P}\PYG{o}{\PYGZam{}\PYGZam{}} \PYG{n}{p} \PYG{o}{=} \PYG{p}{\PYGZob{}\PYGZcb{})} \PYG{p}{\PYGZob{}}
+   \PYG{k}{if} \PYG{p}{(}\PYG{n}{last} \PYG{o}{\PYGZhy{}} \PYG{n}{first} \PYG{o}{\PYGZlt{}=} \PYG{n}{sort\PYGZus{}cutoff}\PYG{p}{)} \PYG{p}{\PYGZob{}}
+     \PYG{n}{serial}\PYG{o}{::}\PYG{n}{sort}\PYG{p}{(}\PYG{n}{first}\PYG{p}{,} \PYG{n}{last}\PYG{p}{,} \PYG{n}{p}\PYG{p}{);}
+     \PYG{k}{return}\PYG{p}{;}
+   \PYG{p}{\PYGZcb{}}
+
+   \PYG{k}{auto}\PYG{o}{\PYGZam{}} \PYG{n}{task} \PYG{o}{=} \PYG{o}{*}\PYG{k}{new} \PYG{p}{(}\PYG{n}{task}\PYG{o}{::}\PYG{n}{allocate\PYGZus{}root}\PYG{p}{())} \PYG{n}{sort\PYGZus{}impl}\PYG{p}{\PYGZob{}}
+     \PYG{n}{first}\PYG{p}{,} \PYG{n}{last}\PYG{p}{,} \PYG{n}{p}
+   \PYG{p}{\PYGZcb{};}
+   \PYG{n}{task}\PYG{o}{::}\PYG{n}{spawn\PYGZus{}root\PYGZus{}and\PYGZus{}wait}\PYG{p}{(}\PYG{n}{task}\PYG{p}{);}
+ \PYG{p}{\PYGZcb{}}
+\end{Verbatim}

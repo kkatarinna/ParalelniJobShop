@@ -1,0 +1,11 @@
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}]
+ \PYG{k}{template} \PYG{o}{\PYGZlt{}}\PYG{k}{typename} \PYG{n}{It}\PYG{p}{,} \PYG{k}{typename} \PYG{n}{Out}\PYG{p}{,} \PYG{k}{typename} \PYG{n}{P}\PYG{o}{\PYGZgt{}}
+ \PYG{k}{class} \PYG{n+nc}{parallel}\PYG{o}{::}\PYG{n+nl}{merge\PYGZus{}impl} \PYG{p}{:} \PYG{k}{public} \PYG{n}{task} \PYG{p}{\PYGZob{}}
+ \PYG{k}{private}\PYG{o}{:}
+   \PYG{c+c1}{// member variables}
+   \PYG{k}{struct} \PYG{n+nl}{merge\PYGZus{}continuation} \PYG{p}{:} \PYG{n}{empty\PYGZus{}task} \PYG{p}{\PYGZob{}} \PYG{p}{\PYGZcb{};}
+ \PYG{k}{public}\PYG{o}{:}
+   \PYG{c+c1}{// constructor}
+   \PYG{c+c1}{// execute function}
+ \PYG{p}{\PYGZcb{};}
+\end{Verbatim}

@@ -1,0 +1,31 @@
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}]
+   \PYG{k}{template} \PYG{o}{\PYGZlt{}}\PYG{k}{typename} \PYG{n}{It}\PYG{p}{,} \PYG{k}{typename} \PYG{n}{P}\PYG{o}{\PYGZgt{}}
+   \PYG{k}{class} \PYG{n+nc}{parallel}\PYG{o}{::}\PYG{n+nl}{sort\PYGZus{}impl} \PYG{p}{:} \PYG{k}{public} \PYG{n}{task} \PYG{p}{\PYGZob{}}
+   \PYG{k}{private}\PYG{o}{:}
+     \PYG{c+c1}{// member variables and sort\PYGZus{}continuation definition}
+   \PYG{k}{public}\PYG{o}{:}
+     \PYG{c+c1}{// constructor}
+     \PYG{c+c1}{// ...}
+     \PYG{k}{auto} \PYG{n}{execute}\PYG{p}{()} \PYG{o}{\PYGZhy{}\PYGZgt{}} \PYG{n}{task}\PYG{o}{*} \PYG{p}{\PYGZob{}}
+       \PYG{k}{auto} \PYG{k}{const} \PYG{n}{size} \PYG{o}{=} \PYG{k}{static\PYGZus{}cast}\PYG{o}{\PYGZlt{}}\PYG{k+kt}{size\PYGZus{}t}\PYG{o}{\PYGZgt{}}\PYG{p}{(}\PYG{n}{last} \PYG{o}{\PYGZhy{}} \PYG{n}{first}\PYG{p}{);}
+       \PYG{k}{if} \PYG{p}{(}\PYG{n}{size} \PYG{o}{\PYGZlt{}=} \PYG{n}{sort\PYGZus{}cutoff}\PYG{p}{)} \PYG{p}{\PYGZob{}}
+         \PYG{n}{serial}\PYG{o}{::}\PYG{n}{sort}\PYG{p}{(}\PYG{n}{first}\PYG{p}{,} \PYG{n}{last}\PYG{p}{,} \PYG{n}{p}\PYG{p}{);}
+         \PYG{k}{return} \PYG{k}{nullptr}\PYG{p}{;}
+       \PYG{p}{\PYGZcb{}}
+
+       \PYG{k}{auto} \PYG{k}{const} \PYG{n}{mid} \PYG{o}{=} \PYG{n}{first} \PYG{o}{+} \PYG{n}{size}\PYG{o}{/}\PYG{l+m+mi}{2}\PYG{p}{;}
+
+       \PYG{k}{auto}\PYG{o}{\PYGZam{}} \PYG{n}{c} \PYG{o}{=} \PYG{o}{*}\PYG{k}{new} \PYG{p}{(}\PYG{n}{allocate\PYGZus{}continuation}\PYG{p}{())} \PYG{n}{sort\PYGZus{}continuation}\PYG{p}{\PYGZob{}}
+         \PYG{n}{first}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{last}\PYG{p}{,} \PYG{n}{p}
+       \PYG{p}{\PYGZcb{};}
+       \PYG{n}{c}\PYG{p}{.}\PYG{n}{set\PYGZus{}ref\PYGZus{}count}\PYG{p}{(}\PYG{l+m+mi}{2}\PYG{p}{);}
+
+       \PYG{k}{auto}\PYG{o}{\PYGZam{}} \PYG{n}{left} \PYG{o}{=} \PYG{o}{*}\PYG{k}{new} \PYG{p}{(}\PYG{n}{c}\PYG{p}{.}\PYG{n}{allocate\PYGZus{}child}\PYG{p}{())} \PYG{n}{sort\PYGZus{}impl}\PYG{p}{\PYGZob{}}\PYG{n}{first}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{p}\PYG{p}{\PYGZcb{};}
+       \PYG{n}{spawn}\PYG{p}{(}\PYG{n}{left}\PYG{p}{);}
+
+       \PYG{n}{recycle\PYGZus{}as\PYGZus{}child\PYGZus{}of}\PYG{p}{(}\PYG{n}{c}\PYG{p}{);}
+       \PYG{n}{first} \PYG{o}{=} \PYG{n}{mid}\PYG{p}{;}
+       \PYG{k}{return} \PYG{k}{this}\PYG{p}{;}
+     \PYG{p}{\PYGZcb{}}
+   \PYG{p}{\PYGZcb{};}
+\end{Verbatim}

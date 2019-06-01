@@ -11,8 +11,11 @@ namespace parallel {
     auto sort_cutoff = size_t{2048u};
 
     template <typename It, typename P>
-    struct sort_impl : tbb::task {
+    class sort_impl : public tbb::task {
     private:
+        It first, last;
+        P p;
+
         struct sort_continuation : tbb::task {
             It first, mid, last;
             P p;
@@ -29,9 +32,6 @@ namespace parallel {
             }
         };
     public:
-        It first, last;
-        P p;
-
         sort_impl(It f, It l, P p)
             : first(std::move(f)), last(std::move(l)), p(std::move(p)) { }
 

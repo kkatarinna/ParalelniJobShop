@@ -1,0 +1,13 @@
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}]
+ \PYG{c+c1}{// include/serial/merge.hpp}
+ \PYG{k}{template} \PYG{o}{\PYGZlt{}}\PYG{k}{typename} \PYG{n}{It}\PYG{p}{,} \PYG{k}{typename} \PYG{n}{Out}\PYG{p}{,} \PYG{k}{typename} \PYG{n}{P} \PYG{o}{=} \PYG{n}{less}\PYG{o}{\PYGZlt{}\PYGZgt{}\PYGZgt{}}
+ \PYG{k+kt}{void} \PYG{n}{serial}\PYG{o}{::}\PYG{n}{merge\PYGZus{}impl}\PYG{p}{(}\PYG{n}{It} \PYG{n}{lf}\PYG{p}{,} \PYG{n}{It} \PYG{n}{ll}\PYG{p}{,} \PYG{n}{It} \PYG{n}{rf}\PYG{p}{,} \PYG{n}{It} \PYG{n}{rl}\PYG{p}{,} \PYG{n}{Out} \PYG{n}{of}\PYG{p}{,} \PYG{n}{P}\PYG{o}{\PYGZam{}\PYGZam{}} \PYG{n}{p}\PYG{p}{)} \PYG{p}{\PYGZob{}}
+   \PYG{k}{while} \PYG{p}{(}\PYG{n}{lf} \PYG{o}{!=} \PYG{n}{ll} \PYG{o}{\PYGZam{}\PYGZam{}} \PYG{n}{rf} \PYG{o}{!=} \PYG{n}{rl}\PYG{p}{)}
+     \PYG{k}{if} \PYG{p}{(}\PYG{o}{!}\PYG{n}{p}\PYG{p}{(}\PYG{o}{*}\PYG{n}{rf}\PYG{p}{,} \PYG{o}{*}\PYG{n}{lf}\PYG{p}{))}
+       \PYG{o}{*}\PYG{n}{of}\PYG{o}{++} \PYG{o}{=} \PYG{n}{move}\PYG{p}{(}\PYG{o}{*}\PYG{n}{lf}\PYG{o}{++}\PYG{p}{);}
+     \PYG{k}{else}
+       \PYG{o}{*}\PYG{n}{of}\PYG{o}{++} \PYG{o}{=} \PYG{n}{move}\PYG{p}{(}\PYG{o}{*}\PYG{n}{rf}\PYG{o}{++}\PYG{p}{);}
+   \PYG{n}{of} \PYG{o}{=} \PYG{n}{move}\PYG{p}{(}\PYG{n}{lf}\PYG{p}{,} \PYG{n}{ll}\PYG{p}{,} \PYG{n}{of}\PYG{p}{);}
+   \PYG{n}{move}\PYG{p}{(}\PYG{n}{rf}\PYG{p}{,} \PYG{n}{rl}\PYG{p}{,} \PYG{n}{of}\PYG{p}{);}
+ \PYG{p}{\PYGZcb{}}
+\end{Verbatim}

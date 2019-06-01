@@ -1,0 +1,21 @@
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}]
+   \PYG{c+c1}{\PYGZsh{} merge\PYGZus{}cutoff defined somewhere else}
+   \PYG{k}{def} \PYG{n+nf}{merge\PYGZus{}par}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{p0}\PYG{p}{,} \PYG{n}{pn}\PYG{p}{,} \PYG{n}{q0}\PYG{p}{,} \PYG{n}{qm}\PYG{p}{,} \PYG{n}{out}\PYG{p}{,} \PYG{n}{oi}\PYG{p}{):}
+     \PYG{n}{l\PYGZus{}size} \PYG{o}{=} \PYG{n}{pn} \PYG{o}{\PYGZhy{}} \PYG{n}{p1}
+     \PYG{n}{r\PYGZus{}size} \PYG{o}{=} \PYG{n}{qn} \PYG{o}{\PYGZhy{}} \PYG{n}{q1}
+     \PYG{k}{if} \PYG{n}{l\PYGZus{}size} \PYG{o}{\PYGZlt{}} \PYG{n}{r\PYGZus{}size}\PYG{p}{:}
+       \PYG{n}{l\PYGZus{}size}\PYG{p}{,} \PYG{n}{r\PYGZus{}size} \PYG{o}{=} \PYG{n}{r\PYGZus{}size}\PYG{p}{,} \PYG{n}{l\PYGZus{}size}
+       \PYG{n}{p0}\PYG{p}{,} \PYG{n}{q0} \PYG{o}{=} \PYG{n}{q0}\PYG{p}{,} \PYG{n}{p0}
+       \PYG{n}{pn}\PYG{p}{,} \PYG{n}{qm} \PYG{o}{=} \PYG{n}{qm}\PYG{p}{,} \PYG{n}{pn}
+     \PYG{k}{if} \PYG{n}{l\PYGZus{}size} \PYG{o}{==} \PYG{l+m+mi}{0}\PYG{p}{:}
+       \PYG{k}{return}
+     \PYG{k}{if} \PYG{n}{l\PYGZus{}size} \PYG{o}{+} \PYG{n}{r\PYGZus{}size} \PYG{o}{\PYGZlt{}=} \PYG{n}{merge\PYGZus{}cutoff}\PYG{p}{:}
+       \PYG{n}{merge\PYGZus{}into}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{p0}\PYG{p}{,} \PYG{n}{pn}\PYG{p}{,} \PYG{n}{q0}\PYG{p}{,} \PYG{n}{qm}\PYG{p}{,} \PYG{n}{out}\PYG{p}{,} \PYG{n}{oi}\PYG{p}{)}
+     \PYG{n}{r1} \PYG{o}{=} \PYG{p}{(}\PYG{n}{p1} \PYG{o}{+} \PYG{n}{pn}\PYG{p}{)} \PYG{o}{//} \PYG{l+m+mi}{2}
+     \PYG{n}{r2} \PYG{o}{=} \PYG{n}{lower\PYGZus{}bound}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{q1}\PYG{p}{,} \PYG{n}{qm}\PYG{p}{,} \PYG{n}{xs}\PYG{p}{[}\PYG{n}{r1}\PYG{p}{])}
+     \PYG{n}{r3} \PYG{o}{=} \PYG{n}{oi} \PYG{o}{+} \PYG{p}{(}\PYG{n}{r1} \PYG{o}{\PYGZhy{}} \PYG{n}{p0}\PYG{p}{)} \PYG{o}{+} \PYG{p}{(}\PYG{n}{r2} \PYG{o}{\PYGZhy{}} \PYG{n}{q0}\PYG{p}{)}
+     \PYG{n}{out}\PYG{p}{[}\PYG{n}{r3}\PYG{p}{]} \PYG{o}{=} \PYG{n}{xs}\PYG{p}{[}\PYG{n}{r1}\PYG{p}{]}
+     \PYG{n}{fork} \PYG{n}{merge\PYGZus{}par}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{p0}\PYG{p}{,} \PYG{n}{r1}\PYG{p}{,} \PYG{n}{q0}\PYG{p}{,} \PYG{n}{r2}\PYG{p}{,} \PYG{n}{out}\PYG{p}{,} \PYG{n}{oi}\PYG{p}{)}
+     \PYG{n}{merge\PYGZus{}par}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{r1} \PYG{o}{+} \PYG{l+m+mi}{1}\PYG{p}{,} \PYG{n}{pn}\PYG{p}{,} \PYG{n}{r2}\PYG{p}{,} \PYG{n}{qm}\PYG{p}{,} \PYG{n}{out}\PYG{p}{,} \PYG{n}{r3}\PYG{p}{)}
+     \PYG{n}{join}
+\end{Verbatim}

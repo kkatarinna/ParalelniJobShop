@@ -1,0 +1,23 @@
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}]
+   \PYG{k}{def} \PYG{n+nf}{merge}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{start}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{end}\PYG{p}{):}
+     \PYG{n}{left}    \PYG{o}{=} \PYG{n}{xs}\PYG{p}{[}\PYG{n}{start}\PYG{p}{:}\PYG{n}{mid}\PYG{p}{]}
+     \PYG{n}{right}   \PYG{o}{=} \PYG{n}{xs}\PYG{p}{[}\PYG{n}{mid}\PYG{p}{:}\PYG{n}{end}\PYG{p}{]}
+     \PYG{n}{i}\PYG{p}{,} \PYG{n}{j}\PYG{p}{,} \PYG{n}{k} \PYG{o}{=} \PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{,} \PYG{l+m+mi}{0}
+     \PYG{k}{while} \PYG{n}{i} \PYG{o}{\PYGZlt{}} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{left}\PYG{p}{)} \PYG{o+ow}{and} \PYG{n}{j} \PYG{o}{\PYGZlt{}} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{right}\PYG{p}{):}
+       \PYG{k}{if} \PYG{n}{left}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]} \PYG{o}{\PYGZlt{}=} \PYG{n}{right}\PYG{p}{[}\PYG{n}{j}\PYG{p}{]:}
+         \PYG{n}{xs}\PYG{p}{[}\PYG{n}{k}\PYG{p}{]} \PYG{o}{=} \PYG{n}{left}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}
+         \PYG{n}{i} \PYG{o}{+=} \PYG{l+m+mi}{1}
+         \PYG{n}{k} \PYG{o}{+=} \PYG{l+m+mi}{1}
+       \PYG{k}{else}\PYG{p}{:}
+         \PYG{n}{xs}\PYG{p}{[}\PYG{n}{k}\PYG{p}{]} \PYG{o}{=} \PYG{n}{right}\PYG{p}{[}\PYG{n}{j}\PYG{p}{]}
+         \PYG{n}{j} \PYG{o}{+=} \PYG{l+m+mi}{1}
+         \PYG{n}{k} \PYG{o}{+=} \PYG{l+m+mi}{1}
+     \PYG{k}{while} \PYG{n}{i} \PYG{o}{\PYGZlt{}} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{left}\PYG{p}{):}
+       \PYG{n}{xs}\PYG{p}{[}\PYG{n}{k}\PYG{p}{]} \PYG{o}{=} \PYG{n}{left}\PYG{p}{[}\PYG{n}{i}\PYG{p}{]}
+       \PYG{n}{i} \PYG{o}{+=} \PYG{l+m+mi}{1}
+       \PYG{n}{k} \PYG{o}{+=} \PYG{l+m+mi}{1}
+     \PYG{k}{while} \PYG{n}{j} \PYG{o}{\PYGZlt{}} \PYG{n+nb}{len}\PYG{p}{(}\PYG{n}{right}\PYG{p}{):}
+       \PYG{n}{xs}\PYG{p}{[}\PYG{n}{k}\PYG{p}{]} \PYG{o}{=} \PYG{n}{right}\PYG{p}{[}\PYG{n}{j}\PYG{p}{]}
+       \PYG{n}{j} \PYG{o}{+=} \PYG{l+m+mi}{1}
+       \PYG{n}{k} \PYG{o}{+=} \PYG{l+m+mi}{1}
+\end{Verbatim}

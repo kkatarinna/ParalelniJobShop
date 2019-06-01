@@ -1,0 +1,9 @@
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}]
+   \PYG{k}{def} \PYG{n+nf}{merge\PYGZus{}sort}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{start}\PYG{p}{,} \PYG{n}{end}\PYG{p}{):}
+     \PYG{k}{if} \PYG{n}{end} \PYG{o}{\PYGZhy{}} \PYG{n}{start} \PYG{o}{\PYGZlt{}} \PYG{l+m+mi}{2}\PYG{p}{:}
+       \PYG{k}{return}
+     \PYG{n}{mid} \PYG{o}{=} \PYG{p}{(}\PYG{n}{start} \PYG{o}{+} \PYG{n}{end}\PYG{p}{)} \PYG{o}{//} \PYG{l+m+mi}{2}
+     \PYG{n}{merge\PYGZus{}sort}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{start}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{)}
+     \PYG{n}{merge\PYGZus{}sort}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{end}\PYG{p}{)}
+     \PYG{n}{merge}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{start}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{end}\PYG{p}{)}
+\end{Verbatim}

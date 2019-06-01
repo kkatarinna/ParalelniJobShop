@@ -1,0 +1,12 @@
+\begin{Verbatim}[commandchars=\\\{\},codes={\catcode`\$=3\catcode`\^=7\catcode`\_=8}]
+   \PYG{c+c1}{\PYGZsh{} cutoff defined somewhere else}
+   \PYG{k}{def} \PYG{n+nf}{merge\PYGZus{}sort\PYGZus{}par\PYGZus{}v3}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{start}\PYG{p}{,} \PYG{n}{end}\PYG{p}{):}
+     \PYG{k}{if} \PYG{n}{end} \PYG{o}{\PYGZhy{}} \PYG{n}{start} \PYG{o}{\PYGZlt{}=} \PYG{n}{cutoff}\PYG{p}{:}
+       \PYG{n}{merge\PYGZus{}sort}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{start}\PYG{p}{,} \PYG{n}{end}\PYG{p}{)}
+     \PYG{n}{mid} \PYG{o}{=} \PYG{p}{(}\PYG{n}{start} \PYG{o}{+} \PYG{n}{end}\PYG{p}{)} \PYG{o}{//} \PYG{l+m+mi}{2}
+     \PYG{n}{fork} \PYG{n}{merge\PYGZus{}sort\PYGZus{}par\PYGZus{}v3}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{start}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{)}
+     \PYG{n}{merge\PYGZus{}sort\PYGZus{}par\PYGZus{}v3}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{end}\PYG{p}{)}
+     \PYG{n}{join}
+     \PYG{n}{out} \PYG{o}{=} \PYG{p}{[}\PYG{l+m+mi}{0}\PYG{p}{]} \PYG{o}{*} \PYG{p}{(}\PYG{n}{end} \PYG{o}{\PYGZhy{}} \PYG{n}{start}\PYG{p}{)}
+     \PYG{n}{merge\PYGZus{}par}\PYG{p}{(}\PYG{n}{xs}\PYG{p}{,} \PYG{n}{start}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{mid}\PYG{p}{,} \PYG{n}{end}\PYG{p}{,} \PYG{n}{out}\PYG{p}{,} \PYG{l+m+mi}{0}\PYG{p}{)}
+\end{Verbatim}

@@ -16,18 +16,21 @@ def get_sizes(filename):
 if __name__ == '__main__':
     s, m, l = get_sizes('resources/sizes.txt')
     if sys.argv[1] == 's':
+        print(f'Testing for {s} element vectors...')
         print('Merge\t\tSerial\t\tParallel\tSTL')
         os.system(merge_proc.format(s))
         print()
         print('Sort\t\tSerial\t\tParallel\tSTL')
         os.system(sort_proc.format(s))
     elif sys.argv[1] == 'm':
+        print(f'Testing for {m} element vectors...')
         print('Merge\t\tSerial\t\tParallel\tSTL')
         os.system(merge_proc.format(m))
         print()
         print('Sort\t\tSerial\t\tParallel\tSTL')
         os.system(sort_proc.format(m))
     else:
+        print(f'Testing for {l} element vectors...')
         print('Merge\t\tSerial\t\tParallel\tSTL')
         os.system(merge_proc.format(l))
         print()
